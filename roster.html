@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duty Roster Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        label {
+            font-weight: bold;
+        }
+        textarea, input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 10px;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tbody tr:hover {
+            background-color: #e0e0e0;
+        }
+        .extra-duty {
+            color: red; /* Highlight extra duties in red */
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .date {
+            text-align: right;
+            margin-bottom: 20px;
+            padding-right: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Duty Roster Generator</h1>
+
+    <label for="previousHolidayDuty">Enter Female Doctors who did Holiday Duty last month (separated by new lines):</label>
+    <textarea id="previousHolidayDuty" rows="5" placeholder="e.g. Dr. Rafiza Nasrin\nDr. B"></textarea>
+
+    <label for="femaleDoctors">Enter Female Doctors (name followed by details, separated by two new lines):</label>
+    <textarea id="femaleDoctors" rows="10" placeholder="e.g. Dr. Rafiza Nasrin\n(DDV Student) - 01756-006949\n\nDr. B\n(Info B)"></textarea>
+
+    <label for="maleDoctors">Enter Male Doctors (name followed by details, separated by two new lines):</label>
+    <textarea id="maleDoctors" rows="10" placeholder="e.g. Dr. John Doe\n(MD) - 01876-543210\n\nDr. Y\n(Info Y)"></textarea>
+
+    <label for="year">Enter Year:</label>
+    <input type="number" id="year" value="2025">
+
+    <label for="month">Select Month:</label>
+    <select id="month">
+        <option value="1">January</option>
+        <option value="2">February</option>
+        <option value="3">March</option>
+        <option value="4" selected>April</option>
+        <option value="5">May</option>
+        <option value="6">June</option>
+        <option value="7">July</option>
+        <option value="8">August</option>
+        <option value="9">September</option>
+        <option value="10">October</option>
+        <option value="11">November</option>
+        <option value="12">December</option>
+    </select>
+
+    <label for="holidays">Holidays (auto-filled, can edit):</label>
+    <input type="text" id="holidays" placeholder="Auto-filled holidays" readonly>
+
+    <button onclick="generateRoster()">Generate Roster</button>
+    <button onclick="downloadRosterDoc()">Download Roster as DOC</button>
+
+    <h2>Roster</h2>
+    <table id="rosterTable">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Day</th>
+                <th>Morning (8:00 AM - 2:00 PM)</th>
+                <th>Evening (2:00 PM - 9:00 PM)</th>
+                <th>Night (9:00 PM - 8:00 AM)</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        function getBangladeshHolidays(year, month) {
+            const holidays = [
+                           `${year}-02-21`, // International Mother Language Day
+    `${year}-03-17`, // Sheikh Mujibur Rahman's Birthday
+    `${year}-03-26`, // Independence Day
+    `${year}-04-14`, // Bengali New Year (Pohela Boishakh)
+    `${year}-05-01`, // Labor Day
+    `${year}-05-11`, // Buddha Purnima (Buddhist Holiday - Govt Holiday)
+    `${year}-06-06`, // Jumatul Bidah (Last Friday of Ramadan)
+    `${year}-06-08`, // Shab-e-Qadr (Night of Power)
+    `${year}-06-16`, // Eid ul-Adha (Qurbani Eid) 
+    `${year}-06-17`, // Eid ul-Adha Holiday 
+    `${year}-06-18`, // Eid ul-Adha Holiday 
+    `${year}-07-08`, // Muharram / Ashura (Islamic Holiday)
+    `${year}-08-15`, // National Mourning Day
+    `${year}-09-16`, // Eid Milad-un-Nabi (Prophet Muhammad’s Birthday)
+    `${year}-10-05`, // Durga Puja (Bijoya Dashami - Hindu Holiday)
+    `${year}-12-16`, // Victory Day
+    `${year}-12-25`, // Christmas Day (Christian Holiday)
+    
+    // ✅ **Manually added all Fridays of 2025 as Government Holidays**
+    `${year}-01-03`, // Weekly Govt Holiday (Friday)
+    `${year}-01-10`, // Weekly Govt Holiday (Friday)
+    `${year}-01-17`, // Weekly Govt Holiday (Friday)
+    `${year}-01-24`, // Weekly Govt Holiday (Friday)
+    `${year}-01-31`, // Weekly Govt Holiday (Friday)
+    `${year}-02-07`, // Weekly Govt Holiday (Friday)
+    `${year}-02-14`, // Weekly Govt Holiday (Friday)
+    `${year}-02-21`, // Weekly Govt Holiday (Friday)
+    `${year}-02-28`, // Weekly Govt Holiday (Friday)
+    `${year}-03-07`, // Weekly Govt Holiday (Friday)
+    `${year}-03-14`, // Weekly Govt Holiday (Friday)
+    `${year}-03-21`, // Weekly Govt Holiday (Friday)
+    `${year}-03-28`, // Weekly Govt Holiday (Friday)
+    `${year}-04-04`, // Weekly Govt Holiday (Friday)
+    `${year}-04-11`, // Weekly Govt Holiday (Friday)
+    `${year}-04-18`, // Weekly Govt Holiday (Friday)
+    `${year}-04-25`, // Weekly Govt Holiday (Friday)
+    `${year}-05-02`, // Weekly Govt Holiday (Friday)
+    `${year}-05-09`, // Weekly Govt Holiday (Friday)
+    `${year}-05-16`, // Weekly Govt Holiday (Friday)
+    `${year}-05-23`, // Weekly Govt Holiday (Friday)
+    `${year}-05-30`, // Weekly Govt Holiday (Friday)
+    `${year}-06-06`, // Weekly Govt Holiday (Friday)
+    `${year}-06-13`, // Weekly Govt Holiday (Friday)
+    `${year}-06-20`, // Weekly Govt Holiday (Friday)
+    `${year}-06-27`, // Weekly Govt Holiday (Friday)
+    `${year}-07-04`, // Weekly Govt Holiday (Friday)
+    `${year}-07-11`, // Weekly Govt Holiday (Friday)
+    `${year}-07-18`, // Weekly Govt Holiday (Friday)
+    `${year}-07-25`, // Weekly Govt Holiday (Friday)
+    `${year}-08-01`, // Weekly Govt Holiday (Friday)
+    `${year}-08-08`, // Weekly Govt Holiday (Friday)
+    `${year}-08-15`, // Weekly Govt Holiday (Friday)
+    `${year}-08-22`, // Weekly Govt Holiday (Friday)
+    `${year}-08-29`, // Weekly Govt Holiday (Friday)
+    `${year}-09-05`, // Weekly Govt Holiday (Friday)
+    `${year}-09-12`, // Weekly Govt Holiday (Friday)
+    `${year}-09-19`, // Weekly Govt Holiday (Friday)
+    `${year}-09-26`, // Weekly Govt Holiday (Friday)
+    `${year}-10-03`, // Weekly Govt Holiday (Friday)
+    `${year}-10-10`, // Weekly Govt Holiday (Friday)
+    `${year}-10-17`, // Weekly Govt Holiday (Friday)
+    `${year}-10-24`, // Weekly Govt Holiday (Friday)
+    `${year}-10-31`, // Weekly Govt Holiday (Friday)
+    `${year}-11-07`, // Weekly Govt Holiday (Friday)
+    `${year}-11-14`, // Weekly Govt Holiday (Friday)
+    `${year}-11-21`, // Weekly Govt Holiday (Friday)
+    `${year}-11-28`, // Weekly Govt Holiday (Friday)
+    `${year}-12-05`, // Weekly Govt Holiday (Friday)
+    `${year}-12-12`, // Weekly Govt Holiday (Friday)
+    `${year}-12-19`, // Weekly Govt Holiday (Friday)
+    `${year}-12-26`, // Weekly Govt Holiday (Friday)
+            ];
+
+            const firstDay = new Date(year, month - 1, 1);
+            const lastDay = new Date(year, month, 0); // Last day of the month
+            for (let d = firstDay; d <= lastDay; d.setDate(d.getDate() + 1)) {
+                if (d.getDay() === 5) { // 5 is Friday
+                    holidays.push(`${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`);
+                }
+            }
+
+            return holidays;
+        }
+
+        function getDayOfWeek(dateStr) {
+            const date = new Date(dateStr);
+            const options = { weekday: 'long' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function generateRoster() {
+            const previousHolidayDutyText = document.getElementById('previousHolidayDuty').value;
+            const femaleDoctorsText = document.getElementById('femaleDoctors').value;
+            const maleDoctorsText = document.getElementById('maleDoctors').value;
+
+            // Get the list of female doctors who did holiday duty last month
+            const previousHolidayDuty = previousHolidayDutyText.split('\n').map(name => name.trim()).filter(name => name);
+
+            // Split the text into entries by two new lines
+            const femaleEntries = femaleDoctorsText.split(/\n\s*\n/);
+            const maleEntries = maleDoctorsText.split(/\n\s*\n/);
+
+            // Extract names and details for females
+            const femaleDoctors = femaleEntries.map(entry => {
+                const lines = entry.split('\n').map(line => line.trim());
+                return {
+                    name: lines[0], // First line is the name
+                    details: lines.slice(1).join(' '), // Remaining lines are the details
+                    count: 0 // Initialize shift count
+                };
+            });
+
+            // Extract names and details for males
+            const maleDoctors = maleEntries.map(entry => {
+                const lines = entry.split('\n').map(line => line.trim());
+                return {
+                    name: lines[0], // First line is the name
+                    details: lines.slice(1).join(' '), // Remaining lines are the details
+                    count: 0 // Initialize shift count
+                };
+            });
+
+            const year = parseInt(document.getElementById('year').value);
+            const month = parseInt(document.getElementById('month').value);
+            const holidaysInput = document.getElementById('holidays').value.split(',').map(date => date.trim());
+
+            // Automatically collect holidays
+            const autoHolidays = getBangladeshHolidays(year, month);
+            const holidays = [...new Set([...autoHolidays, ...holidaysInput])]; // Merge and remove duplicates
+
+            const rosterTableBody = document.getElementById('rosterTable').getElementsByTagName('tbody')[0];
+            rosterTableBody.innerHTML = '';
+
+            const numDays = new Date(year, month, 0).getDate();
+
+            for (let day = 1; day <= numDays; day++) {
+                const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const isHoliday = holidays.includes(dateStr);
+                const dayOfWeek = getDayOfWeek(dateStr);
+
+                // Select doctors for each shift
+                const morningShift = isHoliday 
+                    ? randomChoice(femaleDoctors.filter(d => !previousHolidayDuty.includes(d.name))) 
+                    : { name: '' };
+                const eveningShift = randomChoice(femaleDoctors);
+                const nightShift = randomChoice(maleDoctors);
+
+                // Update shift counts
+                if (morningShift.name) morningShift.count++;
+                if (eveningShift.name) eveningShift.count++;
+                if (nightShift.name) nightShift.count++;
+
+                const row = rosterTableBody.insertRow();
+                row.insertCell(0).innerText = dateStr;
+                row.insertCell(1).innerText = dayOfWeek;
+
+                // Display names and details, highlighting extra duty in red
+                const morningCell = row.insertCell(2);
+                morningCell.innerHTML = morningShift.name ? morningShift.name + '<br>' + morningShift.details : '';
+                if (morningShift.count > 1) morningCell.classList.add('extra-duty');
+
+                const eveningCell = row.insertCell(3);
+                eveningCell.innerHTML = eveningShift.name ? eveningShift.name + '<br>' + eveningShift.details : '';
+                if (eveningShift.count > 1) eveningCell.classList.add('extra-duty');
+
+                const nightCell = row.insertCell(4);
+                nightCell.innerHTML = nightShift.name ? nightShift.name + '<br>' + nightShift.details : '';
+                if (nightShift.count > 1) nightCell.classList.add('extra-duty');
+            }
+
+            // Auto-fill holiday input
+            document.getElementById('holidays').value = holidays.join(', ');
+        }
+
+        function downloadRosterDoc() {
+            const rosterTable = document.getElementById('rosterTable');
+            const rows = Array.from(rosterTable.rows);
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const selectedMonth = monthNames[document.getElementById('month').value - 1];
+            const year = document.getElementById('year').value;
+            const dateStr = new Date().toLocaleDateString(); // Current date
+
+            let docContent = `
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Duty Roster</title>
+                    <style>
+                        @page {
+                            size: A4;
+                            margin: 20mm;
+                        }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 10px;
+                        }
+                        .date {
+                            text-align: right;
+                            margin-bottom: 20px;
+                            padding-right: 10px;
+                        }
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                        }
+                        th, td {
+                            border: 1px solid #dddddd;
+                            text-align: left;
+                            padding: 10px;
+                        }
+                        h2 {
+                            text-align: center;
+                        }
+                        .extra-duty {
+                            color: red; /* Highlight extra duties in red */
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h3>Department of Dermatology & Venereology</h3>
+                        <h3>Bangabandhu Sheikh Mujib Medical University</h3>
+                        <h3>Shahbag, Dhaka-1000, Bangladesh</h3>
+                    </div>
+                    <div class="date">
+                        <strong>Date: ${dateStr}</strong>
+                    </div>
+                    <div class="date">
+                        <strong>${selectedMonth}-${year}</strong>
+                    </div>
+                    <table border="1" style="border-collapse:collapse;">
+            `;
+
+            rows.forEach(row => {
+                docContent += '<tr>';
+                const cols = Array.from(row.cells).map(cell => {
+                    const cellContent = cell.innerHTML.replace(/\n/g, '<br>');
+                    const isExtraDuty = cell.classList.contains('extra-duty');
+                    return `<td style="padding:10px;${isExtraDuty ? 'color:red;' : ''}">${cellContent}</td>`;
+                }).join('');
+                docContent += cols;
+                docContent += '</tr>';
+            });
+            docContent += '</table></body></html>';
+
+            const blob = new Blob([docContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'duty_roster.doc';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function randomChoice(arr) {
+            return arr.length > 0 ? arr[Math.floor(Math.random() * arr.length)] : { name: '', details: '' };
+        }
+    </script>
+</body>
+</html>
